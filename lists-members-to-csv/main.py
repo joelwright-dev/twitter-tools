@@ -5,7 +5,7 @@ auth.set_access_token(constants.TWITTER_ACCESS_TOKEN, constants.TWITTER_ACCESS_S
 
 api = tweepy.API(auth)
 
-f = api.get_list_members(list_id=sys.argv[1])
+f = api.get_list_members(list_id=sys.argv[1],count=200)
 
 c = csv.writer(open("members.csv", "w+"))
 
