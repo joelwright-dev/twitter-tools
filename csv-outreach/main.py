@@ -1,6 +1,5 @@
 import json, csv, tweepy, constants, sys, gspread, pprint
 from oauth2client.service_account import ServiceAccountCredentials
-from tqdm import tqdm
 
 personalised_message = "Hey [NAME], I'm a 17 year old entrepreneur building the future of Web 3.0 through my agency. Here's a little information about me:\n• I am currently studying in my final year of schooling 👨🏻‍🎓\n• I love programming and have done so since the age of 12, I know how to produce incredible front ends with functional backends and connect them to the blockchain 👨🏻‍💻\n• I run a Web 3 agency to pay for my dream car (Nissan Skyline GTR R34) and have the best suit at my school formal 🕴🏻\nLet's connect 🤝"
 
@@ -22,25 +21,35 @@ api = tweepy.API(auth)
 sheet = client.open('Web 3 Agency Prospects').sheet1
 python_sheet = sheet.get_all_records()
 pp = pprint.PrettyPrinter()
-pp.pprint(python_sheet)
 
 preview_sheet = open("preview.csv","w")
 
 def update_followers():
     updates = []
-    removes = []
     current_row = 2
-    for account in tqdm(python_sheet):
+    for account in python_sheet:
         try:
             user_data = api.get_user(screen_name=account["Twitter Handle"].replace("@",""))
             updates.append([user_data.followers_count])
             current_row += 1
-            print(f"Updated {account['Name']}")
+            print(f"Updated {account['Name']}: {account['Follower Count']} => {user_data.followers_count}")
         except:
-            removes.append(current_row)
-            print(f"Removed {account['Name']}")
+            confirm = input(f"Attempting to remove {account['Name']} (Y/N): ")
+            if(confirm == "Y"):
+                sheet.delete_row(current_row)
+                print(f"Removed {account['Name']}")
+            else:
+                pass
     sheet.update(f"F2:F{current_row}", updates)
-    for removal in removes:
-        sheet.delete_row(removal)
 
-update_followers()
+def run():
+    sheet = client.open('Web 3 Agency Prospects').sheet1
+    python_sheet = sheet.get_all_records()
+    for account in python_sheet:
+        if account["Contacted?"] == "N" and account["Follower Count"] >= 12531:
+            print(api.get_direct_messages())
+
+if("-u" in sys.argv):
+    update_followers()
+elif("-r" in sys.argv):
+    run()
