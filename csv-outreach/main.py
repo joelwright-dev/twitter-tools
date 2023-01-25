@@ -29,8 +29,6 @@ tclient = tweepy.Client(
     wait_on_rate_limit=True
 )
 
-#f = api.get_list_members(list_id=sys.argv[1],count=200)
-
 pp = pprint.PrettyPrinter()
 
 def update_contacted_prospects():
@@ -59,6 +57,35 @@ def update_contacted_prospects():
         current_row += 1
     sheet.update(f"B2:B{current_row}", updates)
 
+def update_replied_prospects():
+    sheet = client.open('Web 3 Agency Prospects').sheet1
+    python_sheet = sheet.get_all_records()
+    current_row = 2
+    updates = []
+    #1595676806245683201
+    for prospect in python_sheet:
+        print(f"Checking status of {prospect['Name']}")
+        if(prospect["Status (Y/N/P)"] == "N"):
+            try:
+                for message in tclient.get_direct_message_events(participant_id=api.get_user(screen_name=prospect["Twitter Handle"].replace("@","")).id).data:
+                    if(api.get_direct_message(id=message.id)._json["message_create"]["sender_id"] != 1595676806245683201):
+                        # sheet.update(f"B{current_row}", "Y")
+                        updates.append(["P"])
+                        print(f"Updated contacted status of {prospect['Name']}")
+                        continue
+                    else:
+                        updates.append([prospect["Status (Y/N/P)"]])
+                        print(f"Updated contacted status of {prospect['Name']}")
+            except Exception as Argument:
+                logging.exception(f"Failed to update status of {prospect['Name']}")
+                updates.append([prospect["Status (Y/N/P)"]])
+        else:
+            updates.append([prospect["Status (Y/N/P)"]])
+            print(f"Updated contacted status of {prospect['Name']}")
+        print(updates)
+        current_row += 1
+    sheet.update(f"C2:C{current_row}", updates)
+
 def update_followers():
     sheet = client.open('Web 3 Agency Prospects').sheet1
     python_sheet = sheet.get_all_records()
@@ -83,16 +110,22 @@ def run(group):
     sheet = client.open('Web 3 Agency Prospects').sheet1
     python_sheet = sheet.get_all_records()
     current_row = 2
+    updates = []
     for account in python_sheet:
         if account["Contacted?"] == "N" and account["Group"] == group:
             try:
-                api.create_friendship(screen_name=account["Twitter Handle"].replace("@",""), follow=False)
+                #api.create_friendship(screen_name=account["Twitter Handle"].replace("@",""), follow=False)
                 api.send_direct_message(recipient_id=api.get_user(screen_name=account["Twitter Handle"].replace("@","")).id, text=messages[group].replace("[NAME]", account["Name"]))
-                sheet.update(f"B{current_row}", "Y")
+                updates.append(["Y"])
+                print(updates)
                 print(f"Direct messaged {account['Name']}")
-            except:
-                print(f"Could not direct message {account['Name']}")
+            except Exception as e:
+                updates.append([account["Contacted?"]])
+                print(f"Could not direct message {account['Name']} - Reason: {e}")
+        else:
+            updates.append([account["Contacted?"]])
         current_row += 1
+    sheet.update(f"B2:B{current_row}", updates)
 
 def add_members(member_list, group):
     sheet = client.open('Web 3 Agency Prospects').sheet1
@@ -114,6 +147,8 @@ elif("-m" in sys.argv):
     add_members(sys.argv[sys.argv.index("-m")+1], sys.argv[sys.argv.index("-g")+1])
 elif("-d" in sys.argv):
     update_contacted_prospects()
+elif("-c" in sys.argv):
+    update_replied_prospects()
 elif("-a" in sys.argv):
     update_followers()
     update_contacted_prospects()
